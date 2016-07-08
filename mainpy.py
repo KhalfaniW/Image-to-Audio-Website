@@ -58,7 +58,7 @@ def check_file(inputfile):
 
 
 
-
+#this is for if you want to create a password
 def create_random_string(length):
     charcters= string.ascii_letters + string.digits
     rndString=""
@@ -78,19 +78,14 @@ def homepage():
             flask.render_template("main.html")
         global filetype
         filetype = check_file(inputfile)
-        #if filetype == "application/pdf; charset=binary" or "image" in fileinfo:
-            #return redirect(url_for(
-                #filetype="pdf",
-                #file_name=inputfile.filename))
+
 
         if "image" in filetype:
             return flask.render_template(
                     "main.html",
                     file_name=inputfile.filename
                     )
-            #return redirect(
-             #   url_for("image_view", file_name=inputfile.filename)
-              #   )
+
         elif filetype == "NULL":
             return flask.render_template(
                     "main.html",

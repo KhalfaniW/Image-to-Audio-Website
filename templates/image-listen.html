@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+<head>
+<style type="text/css">
+	
+html{
+	height:100%;
+	
+}
+body{
+	height:100%;
+	text-align: center;
+	margin: 0px;
+	background-color:hsl(0,0%,13%);
+	/*color taken from the default image viewer in firefox*/
+}
+
+h3{
+	visibility: hidden;
+}
+h1 {
+	border: 2;
+	border-color: 2;
+	border-style: solid;
+	display: inline;
+
+}
+div.container {
+	text-align:center;
+	height: 70%;
+	width:66%;
+	overflow-y: auto;
+	margin-left:16.5%;
+	margin-right:16.5%;
+
+}
+
+img {
+	max-width: 100%
+}
+form{
+	float:center;
+}
+p {
+	color:white;
+	margin-left:16.5%;
+	margin-right:16.5%;
+}
+</style>
+</head>
+ 		<!--link rel= "stylesheet" type= "text/css" href= "{{ url_for('static',filename='styles/image-handler.css') }}"-->
+
+	<body>
+	
+	
+		<div class="container">
+		
+			<!--h3 id="Image info" style="text-align:center;visibility:hidden" >Page 1, file: BLAHBLAH.image </h3-->
+			<img align="center" src="{{url_for('uploads', filename=file_name)}}" alt="file not found???"style="color:white" >
+		</div>
+		<p style="float:center color:white">
+                        {{imagetext}}
+		</p>
+		<audio src="{{ url_for('getaudio',foldername=file_name+'.folder',audiofile='MAIN.mp3') }}" controls="controls">
+                    Your browser does not support the audio element.
+                  </audio>
+
+		<!--img  alt="file not found???"-->
+	
+
+	</body>
+	<!---audio src="{{ url_for('static',filename='exefile.mp3') }}" controls="controls">
+            Your browser does not support the audio element.
+         </audio-->
+	
+	
+</html>

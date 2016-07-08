@@ -21,4 +21,4 @@ This worked for me.
 
 THen it should be working for you;
 
-To use the website just upload an image, conintiue to the next page where the program will use OCR to extract text, edit the text to remove non-words (or tell the program to do it for you), click continue, refresh the page after it has loaded, then Listen and enjoy!
+To use the website just upload an image, continue to the next page where the program will use OCR to extract text. Then you should edit the text to remove misspelled words (or tell the program to do it for you), click continue, refresh the page after it has loaded, then listen and enjoy!

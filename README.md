@@ -2,7 +2,7 @@
 
 ####This is my Image to Mp3 application, It is built using Flask and a few other libraries,
 
-To run you have to install Flask, enchant (python2 only),Festivival and a TTS Voice, and finnaly make sure you have acess to the Random, Os, and String libraries.
+To run you have to install Flask, enchant (PyEnchant to install on pip2 and pip3),Festivival and a TTS Voice, and finnaly make sure you have acess to the Random, Os, and String libraries.
 
 Once you Install all of the 
 To install festival and a TTS voice run these commands:

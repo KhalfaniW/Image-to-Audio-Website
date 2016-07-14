@@ -2,13 +2,17 @@
 
 ####This is my Image to Mp3 application, It is built using Flask and a few other libraries,
 
-To run you have to install Flask, enchant (PyEnchant to install on pip2 and pip3),Festivival and a TTS Voice, and finnaly make sure you have acess to the Random, Os, and String libraries.
+To run you have to install Flask, enchant (PyEnchant to install on pip2 and pip3),teseract,Festivival and a TTS Voice, and finnaly make sure you have acess to the Random, Os, and String libraries.
 
 Once you Install all of the 
 To install festival and a TTS voice run these commands:
 ```
 sudo apt-get install festival festlex-cmu festlex-poslex festlex-oald libestools1.2 unzip
 sudo apt-get install festvox-don festvox-rablpc16k festvox-kallpc16k festvox-kdlpc16k
+```
+install Tesseract:
+```
+sudo apt-get install tesseract-ocr
 ```
 More info [Here](http://ubuntuforums.org/showthread.php?t=751169) : (The CMU Arctic and Nitech HTS seem to be deprecated)
 

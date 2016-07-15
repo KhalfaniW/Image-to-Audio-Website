@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+#this is in python2
 import flask
 import random
 import string
@@ -14,12 +15,10 @@ import enchant
 
 #this is entire website
 app = flask.Flask(__name__)
-#helps it determine root path
+#explicitly state what the static folder is callled
 app.static_folder = 'static'
-
-app.secret_key = 'super secret , doubly secret key BLAH BLAH BLAH'
+app.secret_key = 'super secret key i just made up'
 index = 0
-#copied
 
 
 UPLOAD_FOLDER = os.getcwd() + '/uploads'
@@ -35,7 +34,7 @@ def check_file(inputfile):
 #in http://tpgit.github.io/UnOfficialLeptDocs/leptonica/README.html#image-i-o
 #the UnOfficial Leptonica documentation it said it can read the following files:
     files = ['jpeg', 'jpg', 'png', 'tiff', 'bmp', 'pnm', 'gif', 'webp']
-    #Leptonica can't read pdf but i can'
+
     fileinfo = "NULL"
     if len(inputfile.filename) == 0:
         return fileinfo
@@ -53,7 +52,7 @@ def check_file(inputfile):
 #when it has no ending for linux users,
 #and it will check if it is an executable
 #for if a hacker is trying to comprise the website
-
+# after it is checked to be safe it is saved to the server
     return fileinfo
 
 
@@ -69,14 +68,14 @@ def create_random_string(length):
 
 @app.route('/',methods=["GET","POST"])
 def homepage():
-    app.secret_key = 'super secret , doubly secret keyjlk;cajldc'
+    app.secret_key = 'super secret key i just made up'
 
-    if request.method == 'POST':
+    if request.method == 'POST':#if there was a file uploaded
 
         inputfile = request.files['file']
         if len(inputfile.filename) > 0:
             flask.render_template("main.html")
-        global filetype
+        global filetype #i want to check the filetype in another function
         filetype = check_file(inputfile)
 
 
@@ -91,7 +90,7 @@ def homepage():
                     "main.html",
                     errormessage="error in file name please change file",
                     )
-        else:
+        else: # if it is not an image file
             return flask.render_template(
                 "main.html",
                 errormessage="wrong file type, please change file"
@@ -121,6 +120,7 @@ def image_view(file_name):
             file_name if "." not in file_name
             else file_name.replace(file_name.split(".")[-1], "")
             )
+    #convert to txt
     subprocess.call([
                 "tesseract",
                 os.path.join(app.config['UPLOAD_FOLDER'], file_name),
@@ -144,11 +144,10 @@ def image_listen(filename):
     directory = UPLOAD_FOLDER + '/' + filename + ".folder"
     if not os.path.exists(directory):
         os.mkdir(directory)
-    #create  the sound files;
+
 
     Dictionary = enchant.Dict("en")
-    #convert to ascii because flask sometimes can't handle Unicode
-    #i'm not sure why
+    #for some reason flask just can't understand Unicode in python2
     asciistring = ""
     for word in request.args.get('imageText').split(" "):
         for letter in word:
@@ -174,12 +173,14 @@ def image_listen(filename):
 
     else:
         texttosay = asciistring
+     #create  the sound files;
     subprocess.Popen(
             #this will crate word.wav file
            "echo \"{0}\"|text2wave -o \"{1}/MAIN.wav\"".format(texttosay,directory),
             stdin=subprocess.PIPE,
             shell=True)
-            #convert the wave to mp3
+    #convert the wave to mp3
+            
     subprocess.call(
         [
             "lame",

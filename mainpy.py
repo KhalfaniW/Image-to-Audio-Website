@@ -17,11 +17,11 @@ import enchant
 app = flask.Flask(__name__)
 #explicitly state what the static folder is callled
 app.static_folder = 'static'
-app.secret_key = 'super secret key i just made up'
+app.secret_key = 'super secret key'
 index = 0
 
 
-UPLOAD_FOLDER = os.getcwd() + '/uploads'
+UPLOAD_FOLDER = '/var/www/FlaskApps/Image-to-Audio-Website-master/uploads'
 
 
 app = Flask(__name__)
@@ -57,7 +57,7 @@ def check_file(inputfile):
 
 
 
-#this is for if you want to create a password
+#this function acts as a password generator
 def create_random_string(length):
     charcters= string.ascii_letters + string.digits
     rndString=""
@@ -68,17 +68,22 @@ def create_random_string(length):
 
 @app.route('/',methods=["GET","POST"])
 def homepage():
-    app.secret_key = 'super secret key i just made up'
-
+    app.secret_key = 'super secret key'
     if request.method == 'POST':#if there was a file uploaded
-
-        inputfile = request.files['file']
+       	inputfile = request.files['file']
+      	
         if len(inputfile.filename) > 0:
             flask.render_template("main.html")
-        global filetype #i want to check the filetype in another function
+
+	#this will deferentiate files of the same name and add security
+	inputfile.filename=create_random_string(10)+"-"+inputfile.filename.replace(" ","")
+	#this also makes filenames unlikely to be guesed adding privacy to the files 
+
+	#i want to check the filetype in another function so i made this global
+        global filetype
+       
         filetype = check_file(inputfile)
-
-
+	
         if "image" in filetype:
             return flask.render_template(
                     "main.html",
@@ -90,7 +95,7 @@ def homepage():
                     "main.html",
                     errormessage="error in file name please change file",
                     )
-        else: # if it is not an image file
+        else:  #if it is not an image file
             return flask.render_template(
                 "main.html",
                 errormessage="wrong file type, please change file"
@@ -180,7 +185,7 @@ def image_listen(filename):
             stdin=subprocess.PIPE,
             shell=True)
     #convert the wave to mp3
-            
+
     subprocess.call(
         [
             "lame",

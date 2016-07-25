@@ -7,8 +7,6 @@ import os
 from flask import Flask, request, redirect, url_for,flash,render_template
 from werkzeug.utils import secure_filename
 import subprocess
-
-
 import enchant
 
 
@@ -19,12 +17,174 @@ app = flask.Flask(__name__)
 app.static_folder = 'static'
 app.secret_key = 'super secret key'
 index = 0
+##DATABASE ADDITION
+from flask import Flask
+from flask_mysqldb import MySQL
+
+app = Flask(__name__)
+mysql = MySQL(app)
+app.config['MYSQL_USER'] = 'root'
+#in the MYSQL shell i ran CREATE DATABASE img2mp3
+app.config['MYSQL_DB'] = 'img2mp3'
 
 
+
+def create_user(username,password):
+     conn = mysql.connect
+     cur = conn.cursor()
+     #check username
+     username_available=True
+     cur.execute('''SELECT username FROM users;''')
+     
+     for tuple_ in  cur.fetchall():
+        # note that since it is a tuple it will check if the whole item is in the array
+        # so you wont have: is "D" in "Dimitri" but: is "D" in ("Dimitri")
+        if username in tuple_:
+             username_available = False
+
+     if username_available:
+         cur.execute('''INSERT INTO users VALUES('{0}', '{1}', 'No');'''.format(username,password))
+         conn.commit()
+         conn.close()
+         return "Success"
+     else:
+         return "Username not available."
+    
+#has_owner must be Yes or No
+def create_file_entry(id_,filename,has_owner,imageview_url,imagelisten_url,username=None): 
+    if username is None:
+        conn = mysql.connect
+        cur = conn.cursor()
+        #instert into database
+        try:#if one refreshes the page they will recieve a Duplicate entry error
+            cur.execute('''INSERT INTO files VALUES(NULL, '%s','%s','%s','%s','%s');
+            ''' %(id_,filename,has_owner,imageview_url.replace("\'","\\\'"),imagelisten_url.replace("\'","\\\'"))
+            )
+            #use .replace("\'","\\\'") to replace ' with \' so it works in the database
+        except:
+            pass
+        conn.commit()   
+        conn.close()
+    else:
+        conn = mysql.connect
+        cur = conn.cursor()
+        try:#if one refreshes the page they will recieve a Duplicate entry error
+            cur.execute('''INSERT INTO files VALUES('%s', '%s','%s','%s','%s','%s');
+            ''' %(username,id_,filename,has_owner,imageview_url.replace("\'","\\\'"),imagelisten_url.replace("\'","\\\'"))
+            )
+        except:
+            pass        
+        cur.execute('''UPDATE users SET has_files="Yes" WHERE username="%s"
+        ''' %(username)
+        )
+      
+        conn.commit()   
+        conn.close()
+        
+def does_login_exist(username,password):
+     conn = mysql.connect
+     cur = conn.cursor()
+     cur.execute('''
+      SELECT username,password 
+      FROM users  
+      WHERE username="%s" AND password="%s";
+     ''' %(username,password)  
+     )
+     return cur.fetchall() != ()
+def hasfiles(username,password):
+     conn = mysql.connect
+     cur = conn.cursor()
+     cur.execute('''
+      SELECT has_files 
+      FROM users  
+      WHERE username="%s" AND password="%s";
+     ''' %(username,password)  
+     )
+     return cur.fetchall()[0][0]
+def getstoredimages(username,password):
+     
+     # Dimitri  | Mendelev
+     conn = mysql.connect
+     cur = conn.cursor()
+     #this will get all infomaration connected with the user
+     cur.execute('''
+      SELECT imageview_url,imagelisten_url,filename 
+      FROM files  INNER JOIN users  
+      ON users.username=files.username 
+      WHERE users.username="%s" AND password="%s";
+     ''' %(username,password)  
+     )
+ 
+     #construct this makes array of dictionaries so jinja can access them all individually
+     url_dictionary_array=[{}]
+     for database_entry in cur.fetchall():
+        tempdict={"imageview":database_entry[0],"imagelisten":database_entry[1],"filename":database_entry[2]}
+        url_dictionary_array.append(tempdict)
+  
+     return url_dictionary_array
+                    
+ 
+
+def set_username_and_password_cookies_and_return_response(username,password,response_to_return):
+    response = app.make_response(response_to_return)
+    response.set_cookie('username',username)
+    response.set_cookie('password',password)
+    return response
+    
+    
+@app.route('/log-in_sign-up',methods=["GET","POST"])
+def login_signup():    
+    if request.method == 'POST':#if there was a file uploaded
+        #in this case max returns the argument that is not None 
+        if max(request.form.get("Login"),request.form.get("Sign-Up"))==request.form.get("Login"):
+         
+            if does_login_exist(request.form.get("Username"),request.form.get("Password")):
+                if hasfiles(request.form.get("Username"),request.form.get("Password")) =="Yes":
+                    return set_username_and_password_cookies_and_return_response(
+                        request.form.get("Username"),
+                        request.form.get("Password"),
+                        #Return Successful log in message
+                        flask.render_template(#show all the information the user has storred
+                                "show-all.html",
+                                 url_dictionary_array=getstoredimages(request.form.get("Username"),request.form.get("Password"))
+                                )
+                        )
+                else:
+                    return redirect("/")
+            else:
+                return flask.render_template(
+                    "login-signup.html",
+                    message="Log in not found",
+                    )
+        else:
+            if create_user(request.form.get("Username"),request.form.get("Password"))=="Success":
+                return  set_username_and_password_cookies_and_return_response(
+                request.form.get("Username"),
+                request.form.get("Password"),
+                #Return Successful log in message
+                #this dosn't need an new html file
+                """
+                <!doctype html>
+                <html align="center" >
+                <h2>Sign Up Successful!<h2>
+                <button onclick="window.location.href='http://img2mp3.com/'">Return Home</button>
+                </html>
+                """
+                )
+            else:
+                return flask.render_template(
+                    "login-signup.html",
+                    message="Username not available",
+                    )
+           
+            
+    return  flask.render_template("login-signup.html")
+
+##DATABASE END
 UPLOAD_FOLDER = '/var/www/FlaskApps/Image-to-Audio-Website-master/uploads'
 
 
-app = Flask(__name__)
+
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 filetype = ""
 
@@ -65,7 +225,11 @@ def create_random_string(length):
         rndString += charcters[random.randint(0, len(charcters) - 1)]
     return rndString
 
-
+@app.route('/i')
+def homepahge():
+    return str(request.cookies.get('username'))
+    
+    
 @app.route('/',methods=["GET","POST"])
 def homepage():
     app.secret_key = 'super secret key'
@@ -144,7 +308,7 @@ def image_view(file_name):
                     )
 
 
-@app.route('/listen/<filename>',methods=["GET","POST"])
+@app.route('/image-listen/<filename>',methods=["GET","POST"])
 def image_listen(filename):
     directory = UPLOAD_FOLDER + '/' + filename + ".folder"
     if not os.path.exists(directory):
@@ -193,10 +357,25 @@ def image_listen(filename):
              directory + "/MAIN.wav",
              directory + "/MAIN.mp3"
         ])
-
+    
 #it is not reccomended to use "shell=True" when handling user input but
 #this should be safe because any injected text will be a string
 
+
+    #just before creating the page,update the database.
+
+    id_=filename.split("-")[0]#remove the randomly created string
+    imageview_url="http://img2mp3.com/image-view/"+filename+"?"
+    imagelisten_url=request.url
+    #the Yes, No strings are if the file has an owner or not
+    
+    
+    if request.cookies.get('username') == None:
+        create_file_entry(id_,filename,"No",imageview_url,imagelisten_url) 
+    else:
+        create_file_entry(id_,filename,"Yes",imageview_url,imagelisten_url,request.cookies.get('username')) 
+    
+    #now return  
     return  render_template(
                     "image-listen.html",
                     file_name=filename,

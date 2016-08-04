@@ -17,14 +17,15 @@ app = flask.Flask(__name__)
 app.static_folder = 'static'
 app.secret_key = 'super secret key'
 index = 0
-##DATABASE ADDITION
+#------------------------------------------    
+#DATABASE ADDITION  BEGIN
+#------------------------------------------
 from flask import Flask
 from flask_mysqldb import MySQL
 
 app = Flask(__name__)
 mysql = MySQL(app)
 app.config['MYSQL_USER'] = 'root'
-#in the MYSQL shell i ran CREATE DATABASE img2mp3
 app.config['MYSQL_DB'] = 'img2mp3'
 
 
@@ -51,33 +52,39 @@ def create_user(username,password):
          return "Username not available."
     
 #has_owner must be Yes or No
-def create_file_entry(id_,filename,has_owner,imageview_url,imagelisten_url,username=None): 
+def create_file_entry(id_,filename,has_owner,imageview_url,imagelisten_url,username=None,): 
+
     if username is None:
         conn = mysql.connect
         cur = conn.cursor()
         #instert into database
-        try:#if one refreshes the page they will recieve a Duplicate entry error
-            cur.execute('''INSERT INTO files VALUES(NULL, '%s','%s','%s','%s','%s');
-            ''' %(id_,filename,has_owner,imageview_url.replace("\'","\\\'"),imagelisten_url.replace("\'","\\\'"))
-            )
-            #use .replace("\'","\\\'") to replace ' with \' so it works in the database
-        except:
-            pass
+        cur.execute('''INSERT INTO files VALUES(NULL, '%s','%s','%s','%s','%s');
+        ''' %(id_,
+        	filename.replace("'","\\'"),
+        	has_owner,
+        	imageview_url.replace("'","\\'"),
+        	imagelisten_url.replace("'","\\'"))
+        	)
+        # I could sanitze the quote marks after creating the string but this seems simpler
         conn.commit()   
         conn.close()
     else:
         conn = mysql.connect
         cur = conn.cursor()
-        try:#if one refreshes the page they will recieve a Duplicate entry error
-            cur.execute('''INSERT INTO files VALUES('%s', '%s','%s','%s','%s','%s');
-            ''' %(username,id_,filename,has_owner,imageview_url.replace("\'","\\\'"),imagelisten_url.replace("\'","\\\'"))
-            )
-        except:
-            pass        
+        cur.execute('''INSERT INTO files VALUES('%s', '%s','%s','%s','%s','%s');
+        ''' %(username.replace("'","\\'"),
+        	id_,
+        	filename.replace("'","\\'"),
+        	has_owner,
+        	imageview_url.replace("'","\\'"),
+        	imagelisten_url.replace("'","\\'"))
+        )
+                
         cur.execute('''UPDATE users SET has_files="Yes" WHERE username="%s"
         ''' %(username)
         )
       
+   
         conn.commit()   
         conn.close()
         
@@ -87,7 +94,7 @@ def does_login_exist(username,password):
      cur.execute('''
       SELECT username,password 
       FROM users  
-      WHERE username="%s" AND password="%s";
+      WHERE username='%s' AND password='%s';
      ''' %(username,password)  
      )
      return cur.fetchall() != ()
@@ -97,16 +104,16 @@ def hasfiles(username,password):
      cur.execute('''
       SELECT has_files 
       FROM users  
-      WHERE username="%s" AND password="%s";
+      WHERE username='%s' AND password='%s';
      ''' %(username,password)  
      )
      return cur.fetchall()[0][0]
 def getstoredimages(username,password):
      
-     # Dimitri  | Mendelev
+  
      conn = mysql.connect
      cur = conn.cursor()
-     #this will get all infomaration connected with the user
+     #this will get all information connected with the user
      cur.execute('''
       SELECT imageview_url,imagelisten_url,filename 
       FROM files  INNER JOIN users  
@@ -115,7 +122,8 @@ def getstoredimages(username,password):
      ''' %(username,password)  
      )
  
-     #construct this makes array of dictionaries so jinja can access them all individually
+     #this makes an array of dictionaries so jinja can access them all individually, right now one only needs filename
+     # but I am considering adding a way to directly access the imageview and imagelisten urls
      url_dictionary_array=[{}]
      for database_entry in cur.fetchall():
         tempdict={"imageview":database_entry[0],"imagelisten":database_entry[1],"filename":database_entry[2]}
@@ -133,11 +141,11 @@ def set_username_and_password_cookies_and_return_response(username,password,resp
     
     
 @app.route('/log-in_sign-up',methods=["GET","POST"])
-def login_signup():    
-    if request.method == 'POST':#if there was a file uploaded
+def log_in():    
+    if request.method == 'POST':
         #in this case max returns the argument that is not None 
         if max(request.form.get("Login"),request.form.get("Sign-Up"))==request.form.get("Login"):
-         
+            #TODO -check if user has files already saved or not
             if does_login_exist(request.form.get("Username"),request.form.get("Password")):
                 if hasfiles(request.form.get("Username"),request.form.get("Password")) =="Yes":
                     return set_username_and_password_cookies_and_return_response(
@@ -179,10 +187,31 @@ def login_signup():
            
             
     return  flask.render_template("login-signup.html")
-
-##DATABASE END
+@app.route("/show-all")
+def showall():
+    if request.cookies.get("username") != None:
+        return flask.render_template(#show all the information the user has storred
+                                    "show-all.html",
+                                     url_dictionary_array=getstoredimages(request.cookies.get("username"),request.cookies.get("password"))
+                                    )
+    else:
+        return "<h2>Please log in to view this page</h2>"
+@app.route("/show-file/<filename>")#Don't Worry it checks the cookies to see if the requestor is signed in or not
+def showfile(filename):
+    url_dictionary_array=getstoredimages(request.cookies.get("username"),request.cookies.get("password"))
+ 
+    for dictionary in [ x for x in url_dictionary_array if len(x)>0 ]: 
+        if dictionary["filename"]==filename:
+            return flask.render_template(
+                            "main.html",
+                            file_name=filename
+                            )
+      
+    return "<h2>File was not found under your current log in with this filename</h2>"
+#------------------------------------------    
+#DATABASE ADDITION  END
+#------------------------------------------   
 UPLOAD_FOLDER = '/var/www/FlaskApps/Image-to-Audio-Website-master/uploads'
-
 
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -225,11 +254,7 @@ def create_random_string(length):
         rndString += charcters[random.randint(0, len(charcters) - 1)]
     return rndString
 
-@app.route('/i')
-def homepahge():
-    return str(request.cookies.get('username'))
-    
-    
+
 @app.route('/',methods=["GET","POST"])
 def homepage():
     app.secret_key = 'super secret key'
@@ -307,8 +332,7 @@ def image_view(file_name):
                     imagetext=text.decode('utf-8')
                     )
 
-
-@app.route('/image-listen/<filename>',methods=["GET","POST"])
+@app.route('/listen/<filename>',methods=["GET","POST"])
 def image_listen(filename):
     directory = UPLOAD_FOLDER + '/' + filename + ".folder"
     if not os.path.exists(directory):
@@ -365,17 +389,37 @@ def image_listen(filename):
     #just before creating the page,update the database.
 
     id_=filename.split("-")[0]#remove the randomly created string
+    #TODO change to be based on request
     imageview_url="http://img2mp3.com/image-view/"+filename+"?"
     imagelisten_url=request.url
-    #the Yes, No strings are if the file has an owner or not
+    id_in_database=False;
+    #Check if the id is not already in the database
+    conn = mysql.connect
+    cur = conn.cursor()
+    #check username
+    username_available=True
+    cur.execute('''SELECT id FROM files;''')
+
+    for tuple_ in  cur.fetchall():
+    # note that since it is a tuple it will check if the whole item is in the array
+    # so you wont have: is "D" in "Dimitri" but: is "D" in ("Dimitri")
+        if id_ in tuple_:
+             id_in_database = True
+
+    conn.commit()   
+    conn.close()
     
-    
-    if request.cookies.get('username') == None:
-        create_file_entry(id_,filename,"No",imageview_url,imagelisten_url) 
-    else:
-        create_file_entry(id_,filename,"Yes",imageview_url,imagelisten_url,request.cookies.get('username')) 
-    
+   
+    if id_in_database == False:
+     #the Yes, No strings are if the file has an owner or not
+        if request.cookies.get('username') != None:
+            create_file_entry(id_,filename,"Yes",imageview_url,imagelisten_url,username=request.cookies.get('username')) 
+        else:
+            
+            create_file_entry(id_,filename,"No",imageview_url,imagelisten_url) 
+        
     #now return  
+    
     return  render_template(
                     "image-listen.html",
                     file_name=filename,
